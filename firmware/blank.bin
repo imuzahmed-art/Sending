@@ -1,23 +1,25 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include "esp_ota_ops.h"
 
 #define TFT_BL_PIN 20
 
 TFT_eSPI tft = TFT_eSPI();
 
 void setup() {
-  // 1. Initialize screen and fill with black
+  // 1. CRITICAL: Tells the bootloader the update is valid to permanently prevent rollback
+  esp_ota_mark_app_valid_cancel_rollback();
+
+  // 2. Clear screen to black
   tft.init();
   tft.fillScreen(TFT_BLACK);
 
-  // 2. Disable backlight completely
+  // 3. Kill display backlight
   pinMode(TFT_BL_PIN, OUTPUT);
   digitalWrite(TFT_BL_PIN, LOW);
-
-  // 3. Put ESP32 into deep sleep to cease all Wi-Fi, camera, and compute operations
-  esp_deep_sleep_start();
 }
 
 void loop() {
-  // Never reached
+  // Stay parked here permanently — do not sleep or reboot
+  delay(10000);
 }
