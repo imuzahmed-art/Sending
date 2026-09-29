@@ -4,6 +4,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Enable proxy trusting so Express detects Railway HTTPS headers
+app.set('trust proxy', true);
+
 // State variable: true if you want the next scan/boot to wipe the ESP
 let triggerBlankWipe = false;
 
@@ -19,11 +22,11 @@ app.use('/firmware', express.static(path.join(__dirname, 'firmware')));
 // --------------------------------------------------------------------------
 app.post('/api/scans', (req, res) => {
   const scanId = req.query.scan_id || 'unknown';
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  // Force https on Railway to prevent 301 redirect loops
+  const baseUrl = `https://${req.get('host')}`;
 
   console.log(`[Scan] Received image for scan_id: ${scanId} (${req.body.length || 0} bytes)`);
 
-  // Default response object
   let responseData = {
     result: "FRESH",
     confidence: "98.2",
@@ -31,27 +34,26 @@ app.post('/api/scans', (req, res) => {
     calories: "22 kcal"
   };
 
-  // If the wipe command is armed, attach the OTA URL to the response
   if (triggerBlankWipe) {
     console.log("[OTA] Trigger active! Sending blank.bin URL to device.");
     responseData.ota_url = `${baseUrl}/firmware/blank.bin`;
-    triggerBlankWipe = false; // Reset trigger after dispatch
+    triggerBlankWipe = false;
   }
 
   res.json(responseData);
 });
 
 // --------------------------------------------------------------------------
-// 2. BOOT-TIME OTA CHECK ENDPOINT
+// 2. BACKGROUND & BOOT-TIME OTA CHECK ENDPOINT
 // --------------------------------------------------------------------------
 app.get('/api/firmware/check', (req, res) => {
   const currentVersion = req.query.version;
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const baseUrl = `https://${req.get('host')}`;
 
-  console.log(`[OTA Check] ESP booted with version: ${currentVersion}`);
+  console.log(`[OTA Check] Ping received. Armed status: ${triggerBlankWipe}`);
 
   if (triggerBlankWipe) {
-    console.log("[OTA] Serving blank.bin on boot check.");
+    console.log("[OTA] Serving blank.bin URL:", `${baseUrl}/firmware/blank.bin`);
     triggerBlankWipe = false;
     return res.json({ url: `${baseUrl}/firmware/blank.bin` });
   }
@@ -65,14 +67,14 @@ app.get('/api/firmware/check', (req, res) => {
 // --------------------------------------------------------------------------
 app.post('/api/admin/arm-wipe', (req, res) => {
   triggerBlankWipe = true;
-  console.log("[Admin] WIPE TRIGGER ARMED. Next scan or boot will flash blank.bin");
-  res.json({ status: "ARMED", message: "Next request from ESP will trigger blank screen OTA." });
+  console.log("[Admin] WIPE TRIGGER ARMED.");
+  res.redirect('/');
 });
 
 app.post('/api/admin/disarm-wipe', (req, res) => {
   triggerBlankWipe = false;
   console.log("[Admin] Wipe disarmed.");
-  res.json({ status: "DISARMED" });
+  res.redirect('/');
 });
 
 // Control dashboard
