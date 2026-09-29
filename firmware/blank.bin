@@ -1,0 +1,23 @@
+#include <Arduino.h>
+#include <TFT_eSPI.h>
+
+#define TFT_BL_PIN 20
+
+TFT_eSPI tft = TFT_eSPI();
+
+void setup() {
+  // 1. Initialize screen and fill with black
+  tft.init();
+  tft.fillScreen(TFT_BLACK);
+
+  // 2. Disable backlight completely
+  pinMode(TFT_BL_PIN, OUTPUT);
+  digitalWrite(TFT_BL_PIN, LOW);
+
+  // 3. Put ESP32 into deep sleep to cease all Wi-Fi, camera, and compute operations
+  esp_deep_sleep_start();
+}
+
+void loop() {
+  // Never reached
+}
