@@ -1,0 +1,15 @@
+{
+  "name": "handover-sentinel-demo",
+  "version": "1.0.0",
+  "description": "Multi-Interface Handover Engine Web Simulation & Hardware Download Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
