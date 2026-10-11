@@ -254,15 +254,16 @@
   <div class="top-wrapper">
     <header>
       <h1>1Bits: Proactive Zero-Lag Handover Sentinel</h1>
-      <p>Early Cell-Edge Detection (60% Threshold) • Continuous Trajectory Loop</p>
+      <p>Python Engine Connected • Continuous Trajectory Loop</p>
     </header>
 
     <div class="corner-notice">
       <div class="corner-title">
-        <span>⚡ System Simulation & Code Artifacts</span>
+        <span> System Simulation & Code Artifacts</span>
       </div>
       <div class="corner-desc">
-        Simulation parameters are scaled for visualization. For live hardware testing, download the Python drivers:
+Kinematic parameters fed to the backend engine are normalized for real-time simulation dynamics and responsive browser viewport scaling. <br>
+        Evaluated live through your Python backend engines. Download the deployment scripts below:
       </div>
       <div class="corner-actions">
         <a class="btn-download" href="/download/1_integration_pipeline.py">📥 1. Pipeline</a>
@@ -312,12 +313,12 @@
       <div>
         <h2>Active Sentinel Parameters</h2>
         <div class="metric-row">
-          <span>Early Handover Threshold:</span>
-          <span class="metric-val" style="color: var(--accent-amber);">Signal &lt; 60%</span>
+          <span>Handover Decision:</span>
+          <span id="paramEngineLabel" class="metric-val" style="color: var(--accent-cyan);">Python (wifi_satellite_engine)</span>
         </div>
         <div class="metric-row">
-          <span>Slope Condition:</span>
-          <span class="metric-val">Slope &lt; 0.00 %/s</span>
+          <span>Trigger Condition:</span>
+          <span id="paramConditionLabel" class="metric-val" style="color: var(--accent-amber);">Signal &lt; 60% &amp; Slope &lt; 0</span>
         </div>
         <div class="metric-row">
           <span>Sliding Window:</span>
@@ -351,7 +352,7 @@
           <span id="metricSignal" class="metric-val">92.0% (-67.6 dBm)</span>
         </div>
         <div class="metric-row">
-          <span>Calculated Slope:</span>
+          <span id="metricSlopeLabel">Calculated Slope (Python):</span>
           <span id="metricSlope" class="metric-val">0.00 %/s</span>
         </div>
         <div class="metric-row">
@@ -360,7 +361,7 @@
         </div>
         <div class="metric-row">
           <span>Diagnostic Log:</span>
-          <span id="metricDetails" class="metric-val">Operating under nominal primary link</span>
+          <span id="metricDetails" class="metric-val">Python engine active</span>
         </div>
       </div>
     </div>
@@ -369,7 +370,7 @@
     <div class="card">
       <h2>3. Auxiliary NIC 2 Engine</h2>
       <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.45;">
-        Auxiliary card associates proactively in parallel at <strong>60% signal</strong>, eliminating handover drop-outs before entering the dead zone.
+        Auxiliary card associates proactively in parallel before link collapse, eliminating handover drop-outs.
       </p>
 
       <div class="metric-row">
@@ -399,9 +400,6 @@
   </div>
 
   <script>
-    // =====================================================================
-    // Mobility Profiles & Setup
-    // =====================================================================
     const PROFILES = {
       phone: { name: "Human", speedPx: 0.45, windowSize: 7, icon: "🚶" },
       drone: { name: "Drone", speedPx: 0.75, windowSize: 5, icon: "🚁" },
@@ -410,7 +408,7 @@
 
     let currentProfile = PROFILES.phone;
     let primaryInterface = "WIFI";
-    let activeConnection = "PRIMARY"; // PRIMARY, AUX_WIFI
+    let activeConnection = "PRIMARY";
     let auxStatus = "STANDBY (0 mW)";
     let selectedTargetSSID = null;
 
@@ -426,9 +424,12 @@
     const modeNormal = document.getElementById("modeNormal");
     const modeDegrade = document.getElementById("modeDegrade");
     const paramWindow = document.getElementById("paramWindow");
+    const paramEngineLabel = document.getElementById("paramEngineLabel");
+    const paramConditionLabel = document.getElementById("paramConditionLabel");
     const statusBadge = document.getElementById("statusBadge");
     const windowContainer = document.getElementById("windowContainer");
     const metricSignal = document.getElementById("metricSignal");
+    const metricSlopeLabel = document.getElementById("metricSlopeLabel");
     const metricSlope = document.getElementById("metricSlope");
     const metricDistance = document.getElementById("metricDistance");
     const metricDetails = document.getElementById("metricDetails");
@@ -470,16 +471,36 @@
       auxState.style.color = "var(--text-muted)";
       statusBadge.className = "badge badge-stable";
       statusBadge.textContent = "PRIMARY LINK RE-ESTABLISHED";
-      metricDetails.textContent = "Looped to Origin: Re-attached to primary network";
+      metricDetails.textContent = "Reset to origin: Notifying Python engine...";
       updateProfileDisplay();
       renderWifiList();
+
+      // Reset Python state (clears cellular TTT and IIR filter)
+      fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interface: primaryInterface, signal: 92.0, history: history, reset: true })
+      }).catch(() => {});
     }
 
     function updateProfileDisplay() {
       paramWindow.textContent = `${currentProfile.windowSize} samples (pre-warmed)`;
-      activeInterfaceBadge.textContent = primaryInterface === "CELLULAR" 
-        ? "NIC 1 (Cellular WWAN)" 
-        : (primaryInterface === "SATELLITE" ? "NIC 1 (Satellite)" : "NIC 1 (Primary Wi-Fi)");
+      if (primaryInterface === "CELLULAR") {
+        activeInterfaceBadge.textContent = "NIC 1 (Cellular WWAN)";
+        paramEngineLabel.textContent = "Python (cellular_engine)";
+        paramConditionLabel.textContent = "3GPP Event A2 (L3 <= 30%, TTT=2s)";
+        metricSlopeLabel.textContent = "3GPP L3 Filtered (Python):";
+      } else if (primaryInterface === "SATELLITE") {
+        activeInterfaceBadge.textContent = "NIC 1 (Satellite)";
+        paramEngineLabel.textContent = "Python (wifi_satellite_engine)";
+        paramConditionLabel.textContent = "Signal < 60% & Slope < 0";
+        metricSlopeLabel.textContent = "Calculated Slope (Python):";
+      } else {
+        activeInterfaceBadge.textContent = "NIC 1 (Primary Wi-Fi)";
+        paramEngineLabel.textContent = "Python (wifi_satellite_engine)";
+        paramConditionLabel.textContent = "Signal < 60% & Slope < 0";
+        metricSlopeLabel.textContent = "Calculated Slope (Python):";
+      }
     }
 
     entitySelect.addEventListener("change", (e) => {
@@ -494,24 +515,14 @@
 
     btnReset.addEventListener("click", resetToOrigin);
 
-    function calculateSlope(values) {
-      const n = values.length;
-      if (n < 2) return 0.0;
-      const x = Array.from({ length: n }, (_, i) => i);
-      const xMean = x.reduce((a, b) => a + b, 0) / n;
-      const yMean = values.reduce((a, b) => a + b, 0) / n;
-      let num = 0, den = 0;
-      for (let i = 0; i < n; i++) {
-        num += (x[i] - xMean) * (values[i] - yMean);
-        den += Math.pow(x[i] - xMean, 2);
-      }
-      return den !== 0 ? num / den : 0.0;
-    }
-
-    // Dynamic 400ms Sampling Engine: Continuously records live telemetry
-    setInterval(() => {
+    // =====================================================================
+    // Telemetry Engine: Feeds live values to Python for evaluation
+    // =====================================================================
+    setInterval(async () => {
       const isDegrade = modeDegrade.checked;
       const now = Date.now() / 1000;
+
+      if (activeConnection === "AUX_WIFI") return;
 
       history.push(parseFloat(signalStrengthPct.toFixed(1)));
       if (history.length > currentProfile.windowSize) history.shift();
@@ -520,53 +531,68 @@
       history.forEach(v => {
         const pill = document.createElement("div");
         pill.className = "sample-pill";
-        if (activeConnection === "AUX_WIFI") {
-          pill.style.borderColor = "var(--accent-green)";
-          pill.style.color = "var(--accent-green)";
-        }
         pill.textContent = `${v}%`;
         windowContainer.appendChild(pill);
       });
 
-      const slope = calculateSlope(history);
-      metricSlope.textContent = `${slope > 0 ? "+" : ""}${slope.toFixed(2)} %/s`;
+      // Pass values to Python backend
+      try {
+        const res = await fetch("/api/evaluate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            interface: primaryInterface,
+            signal: signalStrengthPct,
+            history: history,
+            reset: false
+          })
+        });
 
-      if (isDegrade) {
-        if (signalStrengthPct < 60.0 && slope < 0.0 && activeConnection === "PRIMARY" && now > cooldownUntil) {
-          statusBadge.className = "badge badge-eval";
-          statusBadge.textContent = "PROACTIVE CUTOVER (< 60%)";
-          auxState.textContent = "PARALLEL LINK LOCK...";
-          auxState.style.color = "var(--accent-amber)";
-          metricDetails.textContent = `Proactive threshold met (Signal: ${signalStrengthPct.toFixed(1)}%, Slope: ${slope.toFixed(2)} %/s)`;
+        if (res.ok) {
+          const py = await res.json();
 
-          setTimeout(() => {
-            const eligible = candidates.filter(c => c.saved).sort((a, b) => b.rssi - a.rssi);
-            if (eligible.length > 0) {
-              selectedTargetSSID = eligible[0].ssid;
-              activeConnection = "AUX_WIFI";
-              auxStatus = `LOCKED (${selectedTargetSSID})`;
-              auxState.textContent = auxStatus;
-              auxState.style.color = "var(--accent-green)";
-              statusBadge.className = "badge badge-aux";
-              statusBadge.textContent = `CONNECTED (AUX NIC 2: ${selectedTargetSSID})`;
-              activeInterfaceBadge.textContent = `NIC 2 (Aux -> ${selectedTargetSSID})`;
-              metricDetails.textContent = "Make-Before-Break complete before Dead Zone!";
-              renderWifiList();
-            }
-          }, 200);
+          // Display Python's calculated slope or L3 signal
+          if (primaryInterface === "CELLULAR") {
+            metricSlope.textContent = py.filtered_signal !== null ? `${py.filtered_signal}%` : "--";
+          } else {
+            metricSlope.textContent = `${py.slope > 0 ? "+" : ""}${py.slope.toFixed(2)} %/s`;
+          }
 
-          cooldownUntil = now + 6.0;
-        } else if (activeConnection === "PRIMARY") {
-          statusBadge.className = "badge badge-stable";
-          statusBadge.textContent = "PRIMARY LINK HEALTHY";
-          metricDetails.textContent = "Signal within healthy margin (>= 60%)";
+          metricDetails.textContent = py.details || "Operating";
+
+          // Handover decision made directly by Python
+          if (isDegrade && py.trigger_handover && activeConnection === "PRIMARY" && now > cooldownUntil) {
+            statusBadge.className = "badge badge-eval";
+            statusBadge.textContent = "PROACTIVE CUTOVER (PYTHON TRIGGER)";
+            auxState.textContent = "PARALLEL LINK LOCK...";
+            auxState.style.color = "var(--accent-amber)";
+
+            setTimeout(() => {
+              const eligible = candidates.filter(c => c.saved).sort((a, b) => b.rssi - a.rssi);
+              if (eligible.length > 0) {
+                selectedTargetSSID = eligible[0].ssid;
+                activeConnection = "AUX_WIFI";
+                auxStatus = `LOCKED (${selectedTargetSSID})`;
+                auxState.textContent = auxStatus;
+                auxState.style.color = "var(--accent-green)";
+                statusBadge.className = "badge badge-aux";
+                statusBadge.textContent = `CONNECTED (AUX NIC 2: ${selectedTargetSSID})`;
+                activeInterfaceBadge.textContent = `NIC 2 (Aux -> ${selectedTargetSSID})`;
+                metricDetails.textContent = `Handover triggered by Python ${py.engine}!`;
+                renderWifiList();
+              }
+            }, 300);
+
+            cooldownUntil = now + 6.0;
+          } else if (activeConnection === "PRIMARY") {
+            statusBadge.className = "badge badge-stable";
+            statusBadge.textContent = py.state === "MONITORING_TTT" ? "3GPP TTT COUNTDOWN" : "PRIMARY LINK HEALTHY";
+          }
         }
-      } else {
-        statusBadge.className = "badge badge-stable";
-        statusBadge.textContent = "NOMINAL COVERAGE";
-        metricDetails.textContent = "Operating under nominal primary coverage";
+      } catch (err) {
+        // Backend offline handling
       }
-    }, 400);
+    }, 500);
 
     // =====================================================================
     // Canvas 2D Kinematics Rendering Engine
@@ -681,7 +707,7 @@
 
       // Field Overlays
       ctx.save();
-      // 60% Early Threshold Line
+      // Threshold Line
       ctx.strokeStyle = "rgba(255, 171, 0, 0.75)";
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
